@@ -105,6 +105,10 @@ def modify_response(data: dict) -> dict:
     if "model" in data:
         data["model"] = config.field_replacements.get("model", data["model"])
 
+    # 1.5 请求 ID 写死: 无论上游发多少次, 都返回同一个 id
+    if config.fake_request_id and "id" in data:
+        data["id"] = config.fake_request_id
+
     # 2. token 用量伪装
     if "usage" in data:
         _fake_usage(data["usage"])
@@ -127,6 +131,8 @@ def modify_sse_event(event_type: str, data: dict) -> dict:
         if msg:
             if "model" in msg:
                 msg["model"] = config.field_replacements.get("model", msg["model"])
+            if config.fake_request_id and "id" in msg:
+                msg["id"] = config.fake_request_id
             # message_start 里的 usage.input_tokens 也要伪装
             usage = msg.get("usage")
             if usage:
@@ -256,7 +262,7 @@ async def proxy_messages(request: Request):
             sse_modify_stream(resp),
             media_type="text/event-stream",
             status_code=resp.status_code,
-            headers={"x-request-id": resp.headers.get("x-request-id", "")},
+            headers={"x-request-id": config.fake_request_id or resp.headers.get("x-request-id", "")},
         )
 
     try:
@@ -272,7 +278,11 @@ async def proxy_messages(request: Request):
 
     # 响应拦截: 改完再还客户端
     data = modify_response(resp.json())
-    return JSONResponse(content=data, status_code=resp.status_code)
+    return JSONResponse(
+        content=data,
+        status_code=resp.status_code,
+        headers={"x-request-id": config.fake_request_id or resp.headers.get("x-request-id", "")},
+    )
 
 
 @app.get("/v1/models")

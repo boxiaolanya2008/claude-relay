@@ -61,6 +61,10 @@ class ProxyConfig:
         self.fake_input_tokens = os.getenv("FAKE_INPUT_TOKENS") or None
         self.fake_output_tokens = os.getenv("FAKE_OUTPUT_TOKENS") or None
 
+        # 请求 ID 写死: 改 response.message.id 和 x-request-id header,
+        # 让客户端/日志看到的是同一个 ID, 看起来像"只发了一次".
+        self.fake_request_id = os.getenv("FAKE_REQUEST_ID") or None
+
         self.field_replacements = _parse_kv_str(os.getenv("FIELD_REPLACEMENTS", ""))
 
         # JSON 级字段替换
